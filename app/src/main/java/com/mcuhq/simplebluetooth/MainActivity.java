@@ -171,7 +171,7 @@ public class MainActivity extends AppCompatActivity {
                     if (lastAnimationIndex != newAnimationIndex || lastPaletteIndex != newPaletteIndex) {
                         lastAnimationIndex = newAnimationIndex;
                         lastPaletteIndex = newPaletteIndex;
-                        String data = String.format("%d%d", newAnimationIndex, newPaletteIndex);
+                        String data = String.format("=%d%d", newAnimationIndex, newPaletteIndex);
                         mConnectedThread.write(data);
                         Toast.makeText(getApplicationContext(),"Sent data: " + data,Toast.LENGTH_SHORT).show();
                         //todo: ensure "=" is received to confirm setting data; retry otherwise
