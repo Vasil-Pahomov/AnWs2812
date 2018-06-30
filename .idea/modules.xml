@@ -2,7 +2,8 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/SimpleBluetooth.iml" filepath="$PROJECT_DIR$/SimpleBluetooth.iml" />
+      <module fileurl="file://$PROJECT_DIR$/AnWs2812.iml" filepath="$PROJECT_DIR$/AnWs2812.iml" />
+      <module fileurl="file://C:\Users\Vasil\MyDocuments\My\AnWs2812\SimpleBluetooth.iml" filepath="C:\Users\Vasil\MyDocuments\My\AnWs2812\SimpleBluetooth.iml" />
       <module fileurl="file://$PROJECT_DIR$/app/app.iml" filepath="$PROJECT_DIR$/app/app.iml" />
     </modules>
   </component>

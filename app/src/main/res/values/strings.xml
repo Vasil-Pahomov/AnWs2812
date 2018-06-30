@@ -1,3 +1,22 @@
 <resources>
     <string name="app_name">Simple Bluetooth</string>
+    <string-array name="animation_names_array">
+        <item>Run</item>
+        <item>PixieDust</item>
+        <item>Sparkr</item>
+        <item>RandCyc</item>
+        <item>Stars</item>
+        <item>Spread</item>
+        <item>Fly</item>
+    </string-array>
+    <string-array name="palette_names_array">
+        <item>RGB</item>
+        <item>Rainbow</item>
+        <item>RainbowStripe</item>
+        <item>Party</item>
+        <item>Heat</item>
+        <item>Fire</item>
+        <item>IceBlue</item>
+    </string-array>
+
 </resources>

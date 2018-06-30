@@ -19,8 +19,8 @@ import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
-import android.widget.CheckBox;
 import android.widget.ListView;
+import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -45,12 +45,15 @@ public class MainActivity extends AppCompatActivity {
     private Set<BluetoothDevice> mPairedDevices;
     private ArrayAdapter<String> mBTArrayAdapter;
     private ListView mDevicesListView;
-    private CheckBox mLED1;
+    private Spinner animationSpinner, paletteSpinner;
 
     private final String TAG = MainActivity.class.getSimpleName();
     private Handler mHandler; // Our main handler that will receive callback notifications
     private ConnectedThread mConnectedThread; // bluetooth background worker thread to send and receive data
     private BluetoothSocket mBTSocket = null; // bi-directional client-to-client data path
+
+    //indicies of animation and palette that were selected last time, needed to overcome onItemSelected fire on data receiving
+    private int lastAnimationIndex = -1, lastPaletteIndex = -1;
 
     private static final UUID BTMODULEUUID = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB"); // "random" unique identifier
 
@@ -72,7 +75,10 @@ public class MainActivity extends AppCompatActivity {
         mOffBtn = (Button)findViewById(R.id.off);
         mDiscoverBtn = (Button)findViewById(R.id.discover);
         mListPairedDevicesBtn = (Button)findViewById(R.id.PairedBtn);
-        mLED1 = (CheckBox)findViewById(R.id.checkboxLED1);
+        animationSpinner = (Spinner)findViewById(R.id.animationSpinner);
+        paletteSpinner = (Spinner)findViewById(R.id.paletteSpinner);
+
+        setUpSpinners();
 
         mBTArrayAdapter = new ArrayAdapter<String>(this,android.R.layout.simple_list_item_1);
         mBTAdapter = BluetoothAdapter.getDefaultAdapter(); // get a handle on the bluetooth radio
@@ -96,6 +102,7 @@ public class MainActivity extends AppCompatActivity {
                         e.printStackTrace();
                     }
                     mReadBuffer.setText(readMessage);
+                    processIncomeMessage(readMessage);
                 }
 
                 if(msg.what == CONNECTING_STATUS){
@@ -113,15 +120,6 @@ public class MainActivity extends AppCompatActivity {
             Toast.makeText(getApplicationContext(),"Bluetooth device not found!",Toast.LENGTH_SHORT).show();
         }
         else {
-
-            mLED1.setOnClickListener(new View.OnClickListener(){
-                @Override
-                public void onClick(View v){
-                    if(mConnectedThread != null) //First check to make sure thread created
-                        mConnectedThread.write("1");
-                }
-            });
-
 
             mScanBtn.setOnClickListener(new View.OnClickListener() {
                 @Override
@@ -150,6 +148,54 @@ public class MainActivity extends AppCompatActivity {
                     discover(v);
                 }
             });
+        }
+    }
+
+    private void setUpSpinners()
+    {
+        final ArrayAdapter<CharSequence> animationsAdapter = ArrayAdapter.createFromResource(this, R.array.animation_names_array, android.R.layout.simple_spinner_item);
+        animationsAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        animationSpinner.setAdapter(animationsAdapter);
+
+        ArrayAdapter<CharSequence> paletteAdapter = ArrayAdapter.createFromResource(this, R.array.palette_names_array, android.R.layout.simple_spinner_item);
+        paletteAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        paletteSpinner.setAdapter(paletteAdapter);
+
+        AdapterView.OnItemSelectedListener spinnerListener = new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> adapterView, View view, int i, long l) {
+
+                if (mConnectedThread != null) {
+                    int newAnimationIndex = animationSpinner.getSelectedItemPosition();
+                    int newPaletteIndex = paletteSpinner.getSelectedItemPosition();
+                    if (lastAnimationIndex != newAnimationIndex || lastPaletteIndex != newPaletteIndex) {
+                        lastAnimationIndex = newAnimationIndex;
+                        lastPaletteIndex = newPaletteIndex;
+                        String data = String.format("%d%d", newAnimationIndex, newPaletteIndex);
+                        mConnectedThread.write(data);
+                        Toast.makeText(getApplicationContext(),"Sent data: " + data,Toast.LENGTH_SHORT).show();
+                        //todo: ensure "=" is received to confirm setting data; retry otherwise
+                    }
+                }
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> adapterView) {
+
+            }
+        };
+
+        animationSpinner.setOnItemSelectedListener(spinnerListener);
+        paletteSpinner.setOnItemSelectedListener(spinnerListener);
+    }
+
+    private void processIncomeMessage(String message)
+    {
+        if (message.charAt(0) == '>' && message.length() >= 4) {
+            lastAnimationIndex = message.charAt(1) - '0';
+            lastPaletteIndex = message.charAt(3) - '0';
+            animationSpinner.setSelection(lastAnimationIndex);
+            paletteSpinner.setSelection(lastPaletteIndex);
         }
     }
 
