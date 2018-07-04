@@ -8,6 +8,10 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
+import android.hardware.Sensor;
+import android.hardware.SensorEvent;
+import android.hardware.SensorEventListener;
+import android.hardware.SensorManager;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.SystemClock;
@@ -19,7 +23,10 @@ import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
+import android.widget.CheckBox;
+import android.widget.CompoundButton;
 import android.widget.ListView;
+import android.widget.MediaController;
 import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -46,6 +53,7 @@ public class MainActivity extends AppCompatActivity {
     private ArrayAdapter<String> mBTArrayAdapter;
     private ListView mDevicesListView;
     private Spinner animationSpinner, paletteSpinner;
+    private CheckBox magicCheckBox;
 
     private final String TAG = MainActivity.class.getSimpleName();
     private Handler mHandler; // Our main handler that will receive callback notifications
@@ -63,6 +71,14 @@ public class MainActivity extends AppCompatActivity {
     private final static int MESSAGE_READ = 2; // used in bluetooth handler to identify message update
     private final static int CONNECTING_STATUS = 3; // used in bluetooth handler to identify message status
 
+    //commands sent to the Arduino
+    private final static String COMMAND_MARKER = "C"; //command marker
+    private final static char CMD_SETAP = '=', //setting animation and palette
+                              CMD_MAGIC = '!', //entering MAGIC mode
+                              CMD_MPOS = 'P'; //MAGIC mode position
+
+    private SensorManager mSensorManager;
+    private Sensor mRotationSensor;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -77,7 +93,9 @@ public class MainActivity extends AppCompatActivity {
         mListPairedDevicesBtn = (Button)findViewById(R.id.PairedBtn);
         animationSpinner = (Spinner)findViewById(R.id.animationSpinner);
         paletteSpinner = (Spinner)findViewById(R.id.paletteSpinner);
+        magicCheckBox = (CheckBox)findViewById(R.id.magicCheckBox);
 
+        setUpMagic();
         setUpSpinners();
 
         mBTArrayAdapter = new ArrayAdapter<String>(this,android.R.layout.simple_list_item_1);
@@ -149,6 +167,7 @@ public class MainActivity extends AppCompatActivity {
                 }
             });
         }
+
     }
 
     private void setUpSpinners()
@@ -171,9 +190,7 @@ public class MainActivity extends AppCompatActivity {
                     if (lastAnimationIndex != newAnimationIndex || lastPaletteIndex != newPaletteIndex) {
                         lastAnimationIndex = newAnimationIndex;
                         lastPaletteIndex = newPaletteIndex;
-                        String data = String.format("=%d%d", newAnimationIndex, newPaletteIndex);
-                        mConnectedThread.write(data);
-                        Toast.makeText(getApplicationContext(),"Sent data: " + data,Toast.LENGTH_SHORT).show();
+                        sendCommand(CMD_SETAP, (byte)newAnimationIndex, (byte)newPaletteIndex);
                         //todo: ensure "=" is received to confirm setting data; retry otherwise
                     }
                 }
@@ -189,14 +206,71 @@ public class MainActivity extends AppCompatActivity {
         paletteSpinner.setOnItemSelectedListener(spinnerListener);
     }
 
+    private void setUpMagic()
+    {
+        magicCheckBox.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton compoundButton, boolean b) {
+                if (mConnectedThread != null) {
+                    sendCommand(CMD_MAGIC, (byte)0 , (byte)0);
+                    Toast.makeText(getApplicationContext(),"MAGIC",Toast.LENGTH_SHORT).show();
+                }
+            }
+        });
+
+        mSensorManager = (SensorManager)getSystemService(SENSOR_SERVICE);
+        mRotationSensor = mSensorManager.getDefaultSensor(Sensor.TYPE_GAME_ROTATION_VECTOR);
+
+        mSensorManager.registerListener(new SensorEventListener() {
+            @Override
+            public void onSensorChanged(SensorEvent sensorEvent) {
+                float[] rotationMatrix = new float[9];
+                SensorManager.getRotationMatrixFromVector(rotationMatrix, sensorEvent.values);
+                float[] orientation = new float[3];
+                SensorManager.getOrientation(rotationMatrix, orientation);
+                magicCheckBox.setText(String.format("(%1$.2f;%2$.2f;%3$.2f)", orientation[0], orientation[1], orientation[2]));
+                if (magicCheckBox.isChecked() && mConnectedThread != null) {
+                    int oByte = (int)Math.floor((0.3 - orientation[1]) * 256 / 0.8);
+                    int cByte = (int)Math.floor((orientation[2]+Math.PI) / (2*Math.PI) * 256);
+                    if (oByte >= 0 && oByte <= 255) {
+                        sendCommand(CMD_MPOS, (byte) oByte, (byte) cByte);
+                    }
+                    Log.d(TAG,String.format("cin=%d",cByte));
+                }
+            }
+
+            @Override
+            public void onAccuracyChanged(Sensor sensor, int i) {
+
+            }
+        },mRotationSensor, SensorManager.SENSOR_DELAY_GAME);
+    }
+
     private void processIncomeMessage(String message)
     {
         if (message.charAt(0) == '>' && message.length() >= 4) {
             lastAnimationIndex = message.charAt(1) - '0';
             lastPaletteIndex = message.charAt(3) - '0';
-            animationSpinner.setSelection(lastAnimationIndex);
-            paletteSpinner.setSelection(lastPaletteIndex);
+            if (lastAnimationIndex >= 0 && lastAnimationIndex < animationSpinner.getAdapter().getCount()) {
+                animationSpinner.setSelection(lastAnimationIndex);
+            }
+            if (lastPaletteIndex >= 0 && lastPaletteIndex < paletteSpinner.getAdapter().getCount()) {
+                paletteSpinner.setSelection(lastPaletteIndex);
+            }
         }
+    }
+
+    private boolean sendCommand(char command, byte b1, byte b2)
+    {
+        if (mConnectedThread == null) {
+            return false;
+        }
+
+        byte[] cmd = new byte[] {(byte)command, b1, b2};
+        mConnectedThread.write(COMMAND_MARKER);
+        mConnectedThread.writeBytes(cmd);
+
+        return true;
     }
 
     private void bluetoothOn(View view){
@@ -391,6 +465,10 @@ public class MainActivity extends AppCompatActivity {
         /* Call this from the main activity to send data to the remote device */
         public void write(String input) {
             byte[] bytes = input.getBytes();           //converts entered String into bytes
+            writeBytes(bytes);
+        }
+
+        public void writeBytes(byte[] bytes) {
             try {
                 mmOutStream.write(bytes);
             } catch (IOException e) { }
