@@ -1,10 +1,17 @@
-# Android-Simple-Bluetooth-Example
-Simple Android Bluetooth example to turn on/off radio and to view and connect with devices. Has associated code to connect to an Arduino.
-For a complete tutorial write-up, please see here: http://mcuhq.com/27/simple-android-bluetooth-application-with-arduino-example
-
-![](http://mcuhq.com/uploads/486f6211acf839e.JPG)
-
-This is a simple demo app that creates buttons to toggle ON/OFF the bluetooth radio, view connected devices, and to discover new bluetooth enabled devices.
-A checkbox and status strings provide functionality to communicate with an embedded microcontroller such as an Arduino. You can find the Arduino gist here: https://gist.github.com/bauerjj/424442ed08647a26652f9fe0736bfa28
-
-
+#  Управление гирляндой  WS2812 со смартфона
+Данный проект является расширением проекта https://github.com/Vasil-Pahomov/ArWs2812. 
+Проект представляет собой приложение для Android, предназначенное для управления гирляндой попиксельно адресуемых светодиодов со смартфона.
+Основой приложения является проект https://github.com/bauerjj/Android-Simple-Bluetooth-Example. Приложение находится в стадии разработки, очень начальной стадии... Прошу понять и простить.
+Приложение обеспечивает следующие функции:
+- отображение текущих эффекта и палитры
+- смена эффекта или палитры на произвольные
+- режим управления гирляндой при помощи акселерометра
+## Установка приложения
+По простому, через [apk-файл](https://github.com/Vasil-Pahomov/AnWs2812/blob/master/binary/app-debug.apk?raw=true).
+## Работа с приложением
+Перед запуском лучше спарить смартфон с модулем.
+1. После запуска нажать **SHOW PAIRED DEVICES**
+2. В списке устройств найти Bluetooth-модуль Arduino и нажать на него
+3. Дождаться, пока в поле **Status:** не появится **Connected to ...**
+После подсоединения модуля в выпадающих списках сверху будут автоматически обновляться эффект и палитра при смене их на Arduino. В то же время можно самому поменять эффект или палитру, выбрав значение из списка, после чего он сразу вступит в действие на Arduino.
+Для активации режима управления акселерометром нужно нажать флажок под списком эффектов. Возврат в обычный режим произойдёт автоматически через 1 минуту.
