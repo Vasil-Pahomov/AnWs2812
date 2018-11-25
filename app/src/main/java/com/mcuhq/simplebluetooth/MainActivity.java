@@ -72,7 +72,7 @@ public class MainActivity extends AppCompatActivity {
     private final static int CONNECTING_STATUS = 3; // used in bluetooth handler to identify message status
 
     //commands sent to the Arduino
-    private final static String COMMAND_MARKER = "C"; //command marker
+    private final static byte COMMAND_MARKER = (byte)255; //command marker
     private final static char CMD_SETAP = '=', //setting animation and palette
                               CMD_MAGIC = '!', //entering MAGIC mode
                               CMD_MPOS = 'P'; //MAGIC mode position
@@ -266,8 +266,8 @@ public class MainActivity extends AppCompatActivity {
             return false;
         }
 
-        byte[] cmd = new byte[] {(byte)command, b1, b2};
-        mConnectedThread.write(COMMAND_MARKER);
+        //not sure why, but sometimes transmission loss occur even through hardware serial port, so simple checksum is added
+        byte[] cmd = new byte[] {COMMAND_MARKER, (byte)command, b1, b2, (byte)((command+b1+b2) % 256)};
         mConnectedThread.writeBytes(cmd);
 
         return true;
